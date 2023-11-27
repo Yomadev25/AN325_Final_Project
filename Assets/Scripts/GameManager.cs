@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
-using UnityEditor.ShaderGraph.Internal;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,7 +15,7 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     private float _maxProgress;
     [SerializeField]
-    private GameObject[] _enemyPrefabs;
+    private EnemyFactory[] _enemies;
 
     [Header("Gameplay Properties")]
     [SerializeField]
@@ -55,6 +54,8 @@ public class GameManager : MonoBehaviour
     private TMP_Text _levelTextPopup;
     [SerializeField]
     private Image _progressBar;
+    [SerializeField]
+    private CanvasGroup _damageEffect;
 
     [Header("Passive Perk HUD")]
     [SerializeField]
@@ -90,6 +91,12 @@ public class GameManager : MonoBehaviour
 
     private Player player;
 
+    [Header("Spawn Setting")]
+    [SerializeField]
+    private double currentWeights = 200f;
+    private double accumulatedWeights;
+    private System.Random rand = new System.Random();
+
     private void Awake()
     {
         if (instance == null)
@@ -120,6 +127,8 @@ public class GameManager : MonoBehaviour
 
         _playButton.onClick.AddListener(Play);
         _replayButton.onClick.AddListener(Replay);
+
+        CalculateWeights();
         Transition.instance.FadeOut();
     }
 
@@ -210,6 +219,11 @@ public class GameManager : MonoBehaviour
         UpdateTimerHud();
 
         _currentLevel++;
+        currentWeights += 10f;
+        if (currentWeights >= accumulatedWeights)
+        {
+            currentWeights = accumulatedWeights;
+        }
     }
 
     private IEnumerator RandomPerk()
@@ -228,12 +242,15 @@ public class GameManager : MonoBehaviour
             perks.Add(perk);
         }
 
+        _perk1.onClick.RemoveAllListeners();
         _perk1.onClick.AddListener(() => SelectPerk(perks[0]));
         _perk1.transform.GetChild(0).GetComponent<Image>().sprite = perks[0].icon;
 
+        _perk2.onClick.RemoveAllListeners();
         _perk2.onClick.AddListener(() => SelectPerk(perks[1]));
         _perk2.transform.GetChild(0).GetComponent<Image>().sprite = perks[1].icon;
 
+        _perk3.onClick.RemoveAllListeners();
         _perk3.onClick.AddListener(() => SelectPerk(perks[2]));
         _perk3.transform.GetChild(0).GetComponent<Image>().sprite = perks[2].icon;
     }
@@ -276,7 +293,7 @@ public class GameManager : MonoBehaviour
         _resultHud.blocksRaycasts = true;
         _resultHud.LeanAlpha(1, 0.3f);
 
-        _lastLevelText.text = "Level " + _currentLevel.ToString();
+        _lastLevelText.text = "Wave " + _currentLevel.ToString();
         _totalDamageText.text = "Total damage : " + _totalDamage.ToString("0");
     }
 
@@ -328,9 +345,31 @@ public class GameManager : MonoBehaviour
         spawnPos.y = UnityEngine.Random.Range(-2.5f, 2.5f);
 
         //Random Enemy
-        GameObject enemy = _enemyPrefabs[UnityEngine.Random.Range(0, _enemyPrefabs.Length)];
+        GameObject enemy = _enemies[GetRandomEnemy()].prefab;
 
         Instantiate(enemy, spawnPos, Quaternion.identity);
+    }
+
+    private int GetRandomEnemy()
+    {
+        double r = rand.NextDouble() * currentWeights;
+        for (int i = 0; i < _enemies.Length; i++)
+        {
+            if (_enemies[i]._weight >= r)
+                return i;
+        }
+
+        return 0;
+    }
+
+    private void CalculateWeights()
+    {
+        accumulatedWeights = 0f;
+        foreach (var enemy in _enemies)
+        {
+            accumulatedWeights += enemy.spawnRate;
+            enemy._weight = accumulatedWeights;
+        }
     }
     #endregion
 
@@ -369,10 +408,28 @@ public class GameManager : MonoBehaviour
 
     public void UpdatePassivePerk(float criticalRate, float flameRate, float iceRate, float bombRate)
     {
-        _criticalRateText.text = (criticalRate * 100).ToString() + "%";
-        _flameRateText.text = (flameRate * 100).ToString() + "%";
-        _iceRateText.text = (iceRate * 100).ToString() + "%";
-        _bombRateText.text = (bombRate * 100).ToString() + "%";
+        _criticalRateText.text = Math.Round(criticalRate * 100, 2).ToString() + "%";
+        _flameRateText.text = Math.Round(flameRate * 100, 2).ToString() + "%";
+        _iceRateText.text = Math.Round(iceRate * 100, 2).ToString() + "%";
+        _bombRateText.text = Math.Round(bombRate * 100, 2).ToString() + "%";
+    }
+
+    public void ShowDamageEffect()
+    {
+        _damageEffect.LeanAlpha(1f, 0.1f).setOnComplete(() =>
+        {
+            _damageEffect.LeanAlpha(0f, 0.5f);
+        });
     }
     #endregion
+}
+
+[Serializable]
+public class EnemyFactory
+{
+    public string name;
+    public GameObject prefab;
+    [Range(0f, 100f)]
+    public float spawnRate;
+    public double _weight;
 }

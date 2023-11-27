@@ -1,3 +1,4 @@
+using CartoonFX;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -27,6 +28,10 @@ public class Player : MonoBehaviour
     private Vector3 _offset;
     [SerializeField]
     private float _speed;
+
+    [Header("Others")]
+    [SerializeField]
+    private ParticleSystem _damageEffect;
 
     private Camera cam;
 
@@ -60,7 +65,10 @@ public class Player : MonoBehaviour
         Debug.Log("Take Damage");
         _hp--;
 
+        Instantiate(_damageEffect.gameObject, transform);
         GameManager.instance.UpdateHPIcon(_maxHp, _hp);
+        GameManager.instance.ShowDamageEffect();
+
         if (_hp <= 0)
         {
             GameManager.instance.Gameover();
