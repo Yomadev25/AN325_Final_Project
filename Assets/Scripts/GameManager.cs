@@ -9,13 +9,23 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager instance;
 
+    public enum Mode
+    {
+        NORMAL,
+        HARD
+    }
+
     [Header("Gameplay Settings")]
+    [SerializeField]
+    private Mode mode = Mode.NORMAL;
     [SerializeField]
     private float _levelDuration;
     [SerializeField]
     private float _maxProgress;
     [SerializeField]
     private EnemyFactory[] _enemies;
+    [SerializeField]
+    private AudioSource _backgroundMusic;
 
     [Header("Gameplay Properties")]
     [SerializeField]
@@ -35,7 +45,9 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     private CanvasGroup _menuHud;
     [SerializeField]
-    private Button _playButton;
+    private Button _normalPlayButton;
+    [SerializeField]
+    private Button _hardPlayButton;
 
     [Header("Gameplay HUD")]
     [SerializeField]
@@ -83,9 +95,15 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     private TMP_Text _lastLevelText;
     [SerializeField]
+    private TMP_Text _highLevelText;
+    [SerializeField]
     private TMP_Text _totalDamageText;
     [SerializeField]
+    private TMP_Text _highDamageText;
+    [SerializeField]
     private Button _replayButton;
+    [SerializeField]
+    private AudioSource _gameoverSfx;
 
     public bool isPlay;
 
@@ -125,10 +143,17 @@ public class GameManager : MonoBehaviour
         _resultHud.interactable = false;
         _resultHud.blocksRaycasts = false;
 
-        _playButton.onClick.AddListener(Play);
-        _replayButton.onClick.AddListener(Replay);
-
         CalculateWeights();
+
+        _normalPlayButton.onClick.AddListener(Play);
+        _hardPlayButton.onClick.AddListener(() =>
+        {
+            currentWeights = accumulatedWeights;
+            mode = Mode.HARD; 
+            Play();
+        });
+        _replayButton.onClick.AddListener(Replay);
+    
         Transition.instance.FadeOut();
     }
 
@@ -292,9 +317,29 @@ public class GameManager : MonoBehaviour
         _resultHud.interactable = true;
         _resultHud.blocksRaycasts = true;
         _resultHud.LeanAlpha(1, 0.3f);
+        _gameoverSfx.Play();
+        _backgroundMusic.Stop();
 
+        int highLevel = PlayerPrefs.GetInt("Level" + mode.ToString(), 0);
+        float highDamage = PlayerPrefs.GetFloat("Damage" + mode.ToString(), 0);
+
+        if (_currentLevel >= highLevel)
+        {
+            highLevel = _currentLevel;
+            PlayerPrefs.SetInt("Level" + mode.ToString(), highLevel);
+        }
+            
+
+        if (_totalDamage >= highDamage)
+        {
+            highDamage = _totalDamage;
+            PlayerPrefs.SetFloat("Damage" + mode.ToString(), highDamage);
+        }
+            
         _lastLevelText.text = "Wave " + _currentLevel.ToString();
+        _highLevelText.text = "highest wave : " + highLevel.ToString();
         _totalDamageText.text = "Total damage : " + _totalDamage.ToString("0");
+        _highDamageText.text = "highest total damage : " + highDamage.ToString("0");
     }
 
     private void Replay()

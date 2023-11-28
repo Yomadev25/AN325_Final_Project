@@ -66,7 +66,7 @@ public class Slime : MonoBehaviour
 
     IEnumerator BiteCoroutine()
     {
-        Player player = FindFirstObjectByType<Player>();
+        Player player = FindObjectOfType<Player>();
         if (Vector3.Distance(transform.position, player.transform.position) < biteRadius)
         {
             player.TakeDamage();
